@@ -1,0 +1,4 @@
+[pomodoro]
+command=~/repos/i3blocks-pomodoro/pomodoro
+format=json
+interval=persist

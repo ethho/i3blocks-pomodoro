@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+
+"""
+Simple Pomodoro app inspired by https://github.com/rkashapov/i3blocks-pomodoro
+The app designed to be used with i3blocks.
+"""
+
+import os
+import json
+from itertools import cycle
+from subprocess import call
+from time import sleep
+
+
+def notify(text):
+    call(["notify-send", "Pomodoro", text])
+
+
+class Cycle:
+    def __init__(self, items):
+        self._items = items
+        self._iter = None
+        self.reset()
+
+    def reset(self):
+        self._iter = cycle(self._items)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self._iter)
+
+
+class Pomodoro:
+    def __init__(self, cycle):
+        self._cycle = cycle
+        self._state = "Paused"
+        self._remaining = 0
+        self._do_reset = False
+        self._running = False
+
+    @property
+    def state(self):
+        state = self._state
+        if not self._running:
+            state = "Paused"
+        minutes, seconds = divmod(self._remaining, 60)
+        return "{0} {1:02d}:{2:02d}".format(state, minutes, seconds)
+
+    def toggle(self):
+        self._running = not self._running
+
+    def reset(self):
+        self._do_reset = True
+        self._cycle.reset()
+
+    def start(self):
+        for timeout, state, message in self._cycle:
+            if self._do_reset:
+                self._do_reset = False
+
+            if self._running:
+                self._state = state
+                notify(message)
+
+            self._remaining = timeout * 60
+            while self._remaining:
+                if self._do_reset:
+                    break
+                sleep(1)
+                if self._running:
+                    self._remaining -= 1
+                    self._state = state
+
+def emit(full_text, short_text, color, background=None):
+    d = {
+        'full_text': full_text,
+        'short_text': short_text,
+        'color': color,
+    }
+    if background:
+        d['background'] = background
+    print(json.dumps(d), flush=True)
+
+def main():
+    cycle = Cycle([
+        (25, "Work", "Time to work!"),
+        (5, "Short break", "Take a break!"),
+        (25, "Work", "Time to work!"),
+        (5, "Short break", "Take a break!"),
+        (25, "Work", "Time to work!"),
+        (5, "Short break", "Take a break!"),
+        (15, "Long break", "Take a long break!"),
+    ])
+
+    # Capture state from env
+    button = os.getenv("BLOCK_BUTTON", "").lower()
+    for item in cycle:
+        emit(item[1], 'short_txt', '#FF8000' if item[0] == 25 else '#00FF00')
+        sleep(1)
+        # break
+
+if __name__ == "__main__":
+    main()
