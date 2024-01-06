@@ -9,7 +9,7 @@ import os
 import sys
 import json
 from typing import Dict, List, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import datetime
 from subprocess import call
@@ -95,9 +95,13 @@ def notify(text):
     call(["notify-send", "Pomodoro", text])
 
 
+def _now() -> int:
+    return int(datetime.datetime.now().timestamp())
+
+
 @dataclass
 class State:
-    created: int
+    stage_started: int = field(default_factory=_now)
     stage: int = 0
 
     def update_from_json(self, path: Path):
@@ -110,10 +114,6 @@ class State:
         if isinstance(path, str):
             path = Path(path)
         path.write_text(json.dumps(self.__dict__, indent=4))
-
-
-def _now() -> int:
-    return int(datetime.datetime.now().timestamp())
 
 
 @dataclass
@@ -152,6 +152,7 @@ class LongBreak(Stage):
 @dataclass
 class Pomo:
     start_timestamp: int
+    state: Optional[State] = None
     state_fp: str = STATE_FILE
     stages: List[Stage] = (
         Work,
@@ -166,31 +167,29 @@ class Pomo:
         return int(but) if but else None
 
     def run(self):
-        # datetime from Unix timestamp
-        start_time = datetime.datetime.fromtimestamp(int(self.start_timestamp))
-        start_str = start_time.strftime("%H:%M")
-
         # Restore state from JSON
-        state = State(
-            created=_now(),
-            stage=0,
-        )
-        # state.update_from_json(self.state_fp)
+        if self.state is None:
+            self.state = State()
+            self.state.update_from_json(self.state_fp)
 
+        # Main event loop
         while True:
-            stage = self.stages[state.stage]()
-            since_created = _now() - state.created
+            stage = self.stages[self.state.stage]()
+            since_started = _now() - self.state.stage_started
+            assert since_started >= 0
+            remaining = stage.seconds - since_started
 
-            breakpoint()
-            # for i, stage in enumerate(cycle(self.stages)):
-            #     if since_created < stage.seconds:
-            #         state.stage = i
-            #         break
+            # Stage is over
+            if remaining <= 0:
+                self.state.stage += 1
+                self.state.stage_started = _now()
+                notify(stage.message)
+                continue
 
-            minutes, seconds = divmod(self._remaining, 60)
-            message = "{0} {1:02d}:{2:02d}".format(state, minutes, seconds)
-
+            minutes, seconds = divmod(remaining, 60)
+            message = "{0} {1:02d}:{2:02d}".format(stage.name, minutes, seconds)
             emit(message, 'short_text', '#FF8000')
+            self.state.to_json(self.state_fp)
             sleep(1)
 
 
