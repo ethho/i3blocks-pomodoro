@@ -1,5 +1,5 @@
 [pomodoro]
-full_text=Click me
+full_text=Error
 command=~/repos/i3blocks-pomodoro/pomodoro
 format=json
-interval=1
+interval=5
