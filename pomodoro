@@ -163,9 +163,8 @@ class Pomo:
 
     @property
     def button(self) -> Optional[int]:
-        but = sys.stdin.readlines()
-        print(but)
-        return int(but[0].strip()) if but else None
+        but = os.environ.get('BLOCK_BUTTON', '').strip()
+        return int(but) if but else None
 
     def run(self):
         # Restore state from JSON
@@ -198,20 +197,12 @@ class Pomo:
                 emit(message, 'short_text', '#FF8000')
 
             self.state.to_json(self.state_fp)
-
-            sleep(1)
+            break
 
 
 def main(state_fp: str = STATE_FILE):
-    while True:
-        line = sys.stdin.readline()
-        if not line:
-            sys.stdin.flush()
-            continue
-        print(f"You entered: {line.strip()}")
-
-    # runner = Pomo(state_fp=state_fp)
-    # runner.run()
+    runner = Pomo(state_fp=state_fp)
+    runner.run()
 
 
 if __name__ == "__main__":

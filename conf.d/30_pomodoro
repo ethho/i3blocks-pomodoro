@@ -1,5 +1,5 @@
 [pomodoro]
 full_text=Click me
-command=~/repos/i3blocks-pomodoro/continuous_wc.py
-# format=json
-interval=persist
+command=~/repos/i3blocks-pomodoro/pomodoro
+format=json
+interval=1
