@@ -103,6 +103,7 @@ def _now() -> int:
 class State:
     stage_started: int = field(default_factory=_now)
     stage: int = 0
+    button: Optional[int] = None
 
     def update_from_json(self, path: Path):
         if isinstance(path, str):
@@ -125,33 +126,32 @@ class Stage:
 
     @property
     def seconds(self):
-        return self.minutes * 60
+        return self.minutes # * 60
 
 
 @dataclass
 class Work(Stage):
     minutes: int = 25
-    name: str = 'work'
+    name: str = 'Work'
     message: str = 'Time to work!'
 
 
 @dataclass
 class ShortBreak(Stage):
     minutes: int = 5
-    name: str = 'short_break'
+    name: str = 'Short Break'
     message: str = 'Take a short break!'
 
 
 @dataclass
 class LongBreak(Stage):
     minutes: int = 15
-    name: str = 'long_break'
+    name: str = 'Long Break'
     message: str = 'Take a long break!'
 
 
 @dataclass
 class Pomo:
-    start_timestamp: int
     state: Optional[State] = None
     state_fp: str = STATE_FILE
     stages: List[Stage] = (
@@ -163,8 +163,9 @@ class Pomo:
 
     @property
     def button(self) -> Optional[int]:
-        but = os.getenv("BLOCK_BUTTON", "").lower()
-        return int(but) if but else None
+        but = sys.stdin.readlines()
+        print(but)
+        return int(but[0].strip()) if but else None
 
     def run(self):
         # Restore state from JSON
@@ -174,6 +175,7 @@ class Pomo:
 
         # Main event loop
         while True:
+            self.state.stage = self.state.stage % len(self.stages)
             stage = self.stages[self.state.stage]()
             since_started = _now() - self.state.stage_started
             assert since_started >= 0
@@ -188,19 +190,29 @@ class Pomo:
 
             minutes, seconds = divmod(remaining, 60)
             message = "{0} {1:02d}:{2:02d}".format(stage.name, minutes, seconds)
-            emit(message, 'short_text', '#FF8000')
+
+            button = self.button
+            if button:
+                emit(f"{button=}", 'short_text', '#FF8000')
+            else:
+                emit(message, 'short_text', '#FF8000')
+
             self.state.to_json(self.state_fp)
+
             sleep(1)
 
 
-def main(start_timestamp: str, state_fp: str = STATE_FILE):
-    runner = Pomo(
-        start_timestamp=int(start_timestamp),
-        state_fp = state_fp
-    )
-    runner.run()
+def main(state_fp: str = STATE_FILE):
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            sys.stdin.flush()
+            continue
+        print(f"You entered: {line.strip()}")
+
+    # runner = Pomo(state_fp=state_fp)
+    # runner.run()
 
 
 if __name__ == "__main__":
-    # main(*sys.argv[1:])
-    main(_now())
+    main(*sys.argv[1:])
