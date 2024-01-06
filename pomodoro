@@ -6,14 +6,17 @@ The app designed to be used with i3blocks.
 """
 
 import os
+import sys
 import json
-from itertools import cycle
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+from pathlib import Path
+import datetime
 from subprocess import call
 from time import sleep
 
+STATE_FILE = '/tmp/i3blocks_pomodoro.state'
 
-def notify(text):
-    call(["notify-send", "Pomodoro", text])
 
 
 class Cycle:
@@ -73,7 +76,8 @@ class Pomodoro:
                     self._remaining -= 1
                     self._state = state
 
-def emit(full_text, short_text, color, background=None):
+
+def emit(full_text, short_text, color, background=None, flush=True):
     d = {
         'full_text': full_text,
         'short_text': short_text,
@@ -81,25 +85,123 @@ def emit(full_text, short_text, color, background=None):
     }
     if background:
         d['background'] = background
-    print(json.dumps(d), flush=True)
+    print(json.dumps(d), flush=flush)
 
-def main():
-    cycle = Cycle([
-        (25, "Work", "Time to work!"),
-        (5, "Short break", "Take a break!"),
-        (25, "Work", "Time to work!"),
-        (5, "Short break", "Take a break!"),
-        (25, "Work", "Time to work!"),
-        (5, "Short break", "Take a break!"),
-        (15, "Long break", "Take a long break!"),
-    ])
+def err(text):
+    print(text, file=sys.stderr, flush=False)
 
-    # Capture state from env
-    button = os.getenv("BLOCK_BUTTON", "").lower()
-    for item in cycle:
-        emit(item[1], 'short_txt', '#FF8000' if item[0] == 25 else '#00FF00')
-        sleep(1)
-        # break
+
+def notify(text):
+    call(["notify-send", "Pomodoro", text])
+
+
+@dataclass
+class State:
+    created: int
+    stage: int = 0
+
+    def update_from_json(self, path: Path):
+        if isinstance(path, str):
+            path = Path(path)
+        if path.is_file():
+            self.__dict__.update(json.loads(path.read_text()))
+
+    def to_json(self, path: Path):
+        if isinstance(path, str):
+            path = Path(path)
+        path.write_text(json.dumps(self.__dict__, indent=4))
+
+
+def _now() -> int:
+    return int(datetime.datetime.now().timestamp())
+
+
+@dataclass
+class Stage:
+    minutes: int
+    name: str
+    message: str
+    seconds_left: int = 0
+
+    @property
+    def seconds(self):
+        return self.minutes * 60
+
+
+@dataclass
+class Work(Stage):
+    minutes: int = 25
+    name: str = 'work'
+    message: str = 'Time to work!'
+
+
+@dataclass
+class ShortBreak(Stage):
+    minutes: int = 5
+    name: str = 'short_break'
+    message: str = 'Take a short break!'
+
+
+@dataclass
+class LongBreak(Stage):
+    minutes: int = 15
+    name: str = 'long_break'
+    message: str = 'Take a long break!'
+
+
+@dataclass
+class Pomo:
+    start_timestamp: int
+    state_fp: str = STATE_FILE
+    stages: List[Stage] = (
+        Work,
+        ShortBreak,
+        Work,
+        LongBreak,
+    )
+
+    @property
+    def button(self) -> Optional[int]:
+        but = os.getenv("BLOCK_BUTTON", "").lower()
+        return int(but) if but else None
+
+    def run(self):
+        # datetime from Unix timestamp
+        start_time = datetime.datetime.fromtimestamp(int(self.start_timestamp))
+        start_str = start_time.strftime("%H:%M")
+
+        # Restore state from JSON
+        state = State(
+            created=_now(),
+            stage=0,
+        )
+        # state.update_from_json(self.state_fp)
+
+        while True:
+            stage = self.stages[state.stage]()
+            since_created = _now() - state.created
+
+            breakpoint()
+            # for i, stage in enumerate(cycle(self.stages)):
+            #     if since_created < stage.seconds:
+            #         state.stage = i
+            #         break
+
+            minutes, seconds = divmod(self._remaining, 60)
+            message = "{0} {1:02d}:{2:02d}".format(state, minutes, seconds)
+
+            emit(message, 'short_text', '#FF8000')
+            sleep(1)
+
+
+def main(start_timestamp: str, state_fp: str = STATE_FILE):
+    runner = Pomo(
+        start_timestamp=int(start_timestamp),
+        state_fp = state_fp
+    )
+    runner.run()
+
 
 if __name__ == "__main__":
-    main()
+    # main(*sys.argv[1:])
+    main(_now())

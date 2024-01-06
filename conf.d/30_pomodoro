@@ -1,4 +1,4 @@
 [pomodoro]
-command=~/repos/i3blocks-pomodoro/pomodoro
+command=~/repos/i3blocks-pomodoro/pomodoro $(date +%s)
 format=json
 interval=persist
