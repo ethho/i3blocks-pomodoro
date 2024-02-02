@@ -116,7 +116,7 @@ class Stage:
 
 @dataclass
 class Work(Stage):
-    minutes: int = 25
+    minutes: int = 50
     name: str = 'Work'
     message: str = 'Time to work!'
     icon: str = ''
@@ -124,7 +124,7 @@ class Work(Stage):
 
 @dataclass
 class ShortBreak(Stage):
-    minutes: int = 5
+    minutes: int = 10
     name: str = 'Short Break'
     message: str = 'Take a short break!'
     icon: str = ''
@@ -133,7 +133,7 @@ class ShortBreak(Stage):
 
 @dataclass
 class LongBreak(Stage):
-    minutes: int = 15
+    minutes: int = 30
     name: str = 'Long Break'
     message: str = 'Take a long break!'
     icon: str = ''
@@ -145,6 +145,8 @@ class Pomo:
     state: Optional[State] = None
     state_fp: str = STATE_FILE
     stages: List[Stage] = (
+        Work,
+        ShortBreak,
         Work,
         ShortBreak,
         Work,
