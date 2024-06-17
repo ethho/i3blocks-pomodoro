@@ -15,17 +15,17 @@ import datetime
 from subprocess import call, check_output
 from time import sleep
 
-STATE_FILE = '/tmp/i3blocks_pomodoro.state'
+STATE_FILE = "/tmp/i3blocks_pomodoro.state"
 
 
 def emit(full_text, short_text, color, background=None, flush=True):
     d = {
-        'full_text': full_text,
-        'short_text': short_text,
-        'color': color,
+        "full_text": full_text,
+        "short_text": short_text,
+        "color": color,
     }
     if background:
-        d['background'] = background
+        d["background"] = background
     print(json.dumps(d), flush=flush)
 
 
@@ -35,6 +35,8 @@ def err(text):
 
 def notify(text):
     call(["notify-send", "Pomodoro", text])
+    for _ in range(5):
+        call(["gst-play-1.0", "/usr/share/sounds/Yaru/stereo/desktop-logoff.oga"])
 
 
 def _now() -> int:
@@ -103,7 +105,7 @@ class Stage:
     name: str
     message: str
     seconds_left: int = 0
-    icon: str = ''
+    icon: str = ""
     color: str = ColorEnum.white
 
     @property
@@ -117,26 +119,26 @@ class Stage:
 @dataclass
 class Work(Stage):
     minutes: int = 50
-    name: str = 'Work'
-    message: str = 'Time to work!'
-    icon: str = ''
+    name: str = "Work"
+    message: str = "Time to work!"
+    icon: str = ""
 
 
 @dataclass
 class ShortBreak(Stage):
     minutes: int = 10
-    name: str = 'Short Break'
-    message: str = 'Take a short break!'
-    icon: str = ''
+    name: str = "Short Break"
+    message: str = "Take a short break!"
+    icon: str = ""
     color: str = ColorEnum.green
 
 
 @dataclass
 class LongBreak(Stage):
     minutes: int = 30
-    name: str = 'Long Break'
-    message: str = 'Take a long break!'
-    icon: str = ''
+    name: str = "Long Break"
+    message: str = "Take a long break!"
+    icon: str = ""
     color: str = ColorEnum.green
 
 
@@ -154,7 +156,7 @@ class Pomo:
     )
 
     def get_button(self) -> Optional[int]:
-        but = os.environ.get('BLOCK_BUTTON', '').strip()
+        but = os.environ.get("BLOCK_BUTTON", "").strip()
         return int(but) if but else None
 
     @property
@@ -177,7 +179,7 @@ class Pomo:
 
             # Stage is over
             if remaining <= 0:
-                os.environ['BLOCK_BUTTON'] = '1'
+                os.environ["BLOCK_BUTTON"] = "1"
                 self.state.stage += 1
                 self.state.started = _now() + 1
                 self.stages[self.stage_idx]().notify()
@@ -199,7 +201,7 @@ class Pomo:
                 color = ColorEnum.orange
             else:
                 color = stage.color
-            emit(message, 'short_text', color)
+            emit(message, "short_text", color)
 
             self.state.to_json(self.state_fp)
             break
